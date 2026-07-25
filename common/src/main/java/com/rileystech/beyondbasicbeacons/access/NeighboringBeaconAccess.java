@@ -23,6 +23,8 @@ public interface NeighboringBeaconAccess {
 
     List<BeaconEffectEntry> bbb_getEffects();
 
+    void bbb_setEffects(List<BeaconEffectEntry> effects);
+
     int bbb_getRange();
 
     void bbb_setRange(int range);

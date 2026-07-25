@@ -92,7 +92,7 @@ public abstract class BeaconBlockEntityMixin extends BlockEntity implements Neig
     private static final Codec<List<BeaconEffectEntry>> EFFECTS_CODEC = BeaconEffectEntry.CODEC.listOf();
 
     @Unique
-    private List<BeaconEffectEntry> effects = new ArrayList<>(List.of(new BeaconEffectEntry("minecraft:speed", 1), new BeaconEffectEntry("minecraft:strength", 2)));
+    private List<BeaconEffectEntry> effects = new ArrayList<>(List.of());
 
     @Unique
     private int range = 50;
@@ -108,6 +108,11 @@ public abstract class BeaconBlockEntityMixin extends BlockEntity implements Neig
     @Override
     public List<BeaconEffectEntry> bbb_getEffects() {
         return this.effects;
+    }
+
+    @Override
+    public void bbb_setEffects(List<BeaconEffectEntry> effects) {
+        this.effects = effects;
     }
 
     @Override

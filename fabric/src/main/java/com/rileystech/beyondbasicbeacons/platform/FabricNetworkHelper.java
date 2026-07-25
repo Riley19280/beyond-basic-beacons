@@ -32,7 +32,7 @@ public class FabricNetworkHelper implements INetworkHelper {
 
         Constants.LOG.info("Registering packet {} {} on the server", packet.type().id(), packet.getClass());
         ServerPlayNetworking.registerGlobalReceiver(packet.type(), (payload, context) -> context.server().execute(() ->
-                payload.onServerReceived()
+                payload.onServerReceived(context.player())
         ));
 
     }

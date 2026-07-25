@@ -4,6 +4,8 @@ import com.rileystech.beyondbasicbeacons.Constants;
 import com.rileystech.beyondbasicbeacons.access.NeighboringBeaconAccess;
 import com.rileystech.beyondbasicbeacons.beacon.BeaconEffectEntry;
 import com.rileystech.beyondbasicbeacons.menu.BeaconMenu;
+import com.rileystech.beyondbasicbeacons.packet.BeaconPacket;
+import com.rileystech.beyondbasicbeacons.platform.Services;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractScrollArea;
 import net.minecraft.client.gui.components.Button;
@@ -102,6 +104,21 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
         this.data.setTotalPoints(beacon.bbb_getBaseBlockPoints() + beacon.bbb_getNeighboringBeacons());
 
         Constants.LOG.info("BeaconScreenData synced: {} selection(s), totalPoints={}", selections.size(), this.data.getTotalPoints());
+    }
+
+    // Sends the player's current edits back to the server. levels/baseBlockPoints/neighboringBeacons
+    // are server-computed and never sent from the client - the 0/0/0 here are unused placeholders,
+    // since BeaconPacket.onServerReceived only applies effects/range/hideParticles.
+    private void saveToServer() {
+        List<BeaconEffectEntry> effects = new ArrayList<>();
+        for (BeaconScreenData.EffectSelection selection : this.data.getEffects()) {
+            Holder.Reference<MobEffect> effect = selection.getEffect();
+            if (effect != null) {
+                effects.add(new BeaconEffectEntry(effect.key().identifier().toString(), selection.getAmplifier()));
+            }
+        }
+
+        Services.NETWORKING.sendToServer(new BeaconPacket(0, 0, 0, effects, this.data.getRange(), this.data.isHideParticles()));
     }
 
     @Override
@@ -224,7 +241,10 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
                     this.leftPos + PANEL_WIDTH - requiredWidth - MARGIN, y + (miscRowHeight - TITLE_HEIGHT) / 2, requiredWidth, TITLE_HEIGHT, requiredText, this.font));
             y += miscRowHeight + SPACING;
 
-            this.addRenderableWidget(Button.builder(Component.literal("Save"), button -> this.onClose())
+            this.addRenderableWidget(Button.builder(Component.literal("Save"), button -> {
+                        this.saveToServer();
+                        this.onClose();
+                    })
                     .bounds(this.leftPos + MARGIN, y, PANEL_WIDTH - MARGIN * 2, SAVE_BUTTON_HEIGHT)
                     .build());
         }
