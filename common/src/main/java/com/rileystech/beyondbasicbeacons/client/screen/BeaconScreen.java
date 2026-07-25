@@ -1,5 +1,8 @@
 package com.rileystech.beyondbasicbeacons.client.screen;
 
+import com.rileystech.beyondbasicbeacons.Constants;
+import com.rileystech.beyondbasicbeacons.access.NeighboringBeaconAccess;
+import com.rileystech.beyondbasicbeacons.beacon.BeaconEffectEntry;
 import com.rileystech.beyondbasicbeacons.menu.BeaconMenu;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractScrollArea;
@@ -15,12 +18,17 @@ import net.minecraft.client.gui.screens.inventory.MenuAccess;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.entity.player.Inventory;
 import org.jspecify.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
     private static final int MARGIN = 8;
@@ -56,6 +64,44 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
         super(title);
         this.menu = menu;
         this.allEffects = BuiltInRegistries.MOB_EFFECT.listElements().toList();
+
+        // The beacon's data lives on the client's own local block entity, already kept in sync
+        // by vanilla's normal block-entity update packet - no custom networking round trip
+        // needed to read it, and no ordering to worry about since it's read synchronously here.
+        this.syncFromMenu();
+    }
+
+    // Reads the beacon's data straight from the client's local block entity into this.data.
+    private void syncFromMenu() {
+        Optional<NeighboringBeaconAccess> beaconAccess = this.menu.getBeaconAccess();
+        if (beaconAccess.isEmpty()) {
+            Constants.LOG.info("BeaconScreen.syncFromMenu: no local beacon block entity found yet");
+            return;
+        }
+        NeighboringBeaconAccess beacon = beaconAccess.get();
+
+        Constants.LOG.info("BeaconScreen.syncFromMenu: {} effect(s), baseBlockPoints={}, neighboringBeacons={}, range={}, hideParticles={}",
+                beacon.bbb_getEffects().size(), beacon.bbb_getBaseBlockPoints(), beacon.bbb_getNeighboringBeacons(),
+                beacon.bbb_getRange(), beacon.bbb_isHideParticles());
+
+        List<BeaconScreenData.EffectSelection> selections = new ArrayList<>();
+        for (BeaconEffectEntry entry : beacon.bbb_getEffects()) {
+            ResourceKey<MobEffect> key = ResourceKey.create(Registries.MOB_EFFECT, Identifier.parse(entry.key()));
+            BuiltInRegistries.MOB_EFFECT.get(key).ifPresentOrElse(effect -> {
+                BeaconScreenData.EffectSelection selection = new BeaconScreenData.EffectSelection();
+                selection.setEffect(effect);
+                selection.setAmplifier(entry.amplifier());
+                selections.add(selection);
+            }, () -> Constants.LOG.info("Could not resolve effect key '{}' to a registered MobEffect - skipping", entry.key()));
+        }
+        this.data.setEffects(selections);
+        this.data.setRange(beacon.bbb_getRange());
+        this.data.setHideParticles(beacon.bbb_isHideParticles());
+
+        // Placeholder combination until the real "total points available" formula is decided.
+        this.data.setTotalPoints(beacon.bbb_getBaseBlockPoints() + beacon.bbb_getNeighboringBeacons());
+
+        Constants.LOG.info("BeaconScreenData synced: {} selection(s), totalPoints={}", selections.size(), this.data.getTotalPoints());
     }
 
     @Override
@@ -78,7 +124,7 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
 
     @Override
     protected void init() {
-        List<BeaconScreenData.EffectRow> rows = this.data.getRows();
+        List<BeaconScreenData.EffectSelection> rows = this.data.getEffects();
         boolean pickerOpen = this.pickerRowIndex != null;
 
         // Built early (at a placeholder position) purely so its real height can be measured -
@@ -118,7 +164,7 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
             LinearLayout rowsColumn = LinearLayout.vertical().spacing(SPACING);
             for (int i = 0; i < rows.size(); i++) {
                 int rowIndex = i;
-                BeaconScreenData.EffectRow row = rows.get(i);
+                BeaconScreenData.EffectSelection row = rows.get(i);
 
                 LinearLayout rowLayout = LinearLayout.horizontal().spacing(SPACING);
                 rowLayout.addChild(new EffectChooserButton(EFFECT_BUTTON_WIDTH, ROW_HEIGHT, row.getEffect(),
@@ -134,7 +180,7 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
                             this.refreshRequiredPoints();
                         }));
                 rowLayout.addChild(Button.builder(Component.literal("X"), button -> {
-                            this.data.removeRow(rowIndex);
+                            this.data.removeEffect(rowIndex);
                             this.rebuildWidgets();
                         })
                         .size(REMOVE_BUTTON_WIDTH, ROW_HEIGHT)
@@ -153,7 +199,7 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
             y += ROWS_AREA_HEIGHT + SPACING;
 
             this.addRenderableWidget(Button.builder(Component.literal("+"), button -> {
-                        this.data.addRow();
+                        this.data.addEffect();
                         this.rebuildWidgets();
                     })
                     .bounds(this.leftPos + MARGIN, y, PANEL_WIDTH - MARGIN * 2, ADD_BUTTON_HEIGHT)
@@ -223,7 +269,7 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
 
     private void selectEffect(Holder.Reference<MobEffect> effect) {
         if (this.pickerRowIndex != null) {
-            this.data.getRows().get(this.pickerRowIndex).setEffect(effect);
+            this.data.getEffects().get(this.pickerRowIndex).setEffect(effect);
         }
         this.pickerRowIndex = null;
         this.rebuildWidgets();

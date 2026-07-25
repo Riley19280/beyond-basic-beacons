@@ -11,7 +11,7 @@ import java.util.List;
 // sent to or read from the server yet.
 public class BeaconScreenData {
 
-    public static class EffectRow {
+    public static class EffectSelection {
         private Holder.@Nullable Reference<MobEffect> effect;
         private int amplifier;
 
@@ -32,21 +32,26 @@ public class BeaconScreenData {
         }
     }
 
-    private final List<EffectRow> rows = new ArrayList<>();
+    private final List<EffectSelection> effects = new ArrayList<>();
     private int range = 50;
     private boolean hideParticles = false;
-    private final int totalPoints = 10;
+    private int totalPoints = 10;
 
-    public List<EffectRow> getRows() {
-        return this.rows;
+    public List<EffectSelection> getEffects() {
+        return this.effects;
     }
 
-    public void addRow() {
-        this.rows.add(new EffectRow());
+    public void setEffects(List<EffectSelection> effects) {
+        this.effects.clear();
+        this.effects.addAll(effects);
     }
 
-    public void removeRow(int index) {
-        this.rows.remove(index);
+    public void addEffect() {
+        this.effects.add(new EffectSelection());
+    }
+
+    public void removeEffect(int index) {
+        this.effects.remove(index);
     }
 
     public int getRange() {
@@ -69,10 +74,14 @@ public class BeaconScreenData {
         return this.totalPoints;
     }
 
+    public void setTotalPoints(int totalPoints) {
+        this.totalPoints = totalPoints;
+    }
+
     public int getRequiredPoints() {
-        int required = this.range * this.rows.size();
-        for (EffectRow row : this.rows) {
-            required += (int) Math.pow(4 + row.getAmplifier(), 3);
+        int required = this.range * this.effects.size();
+        for (EffectSelection selection : this.effects) {
+            required += (int) Math.pow(4 + selection.getAmplifier(), 3);
         }
         return required;
     }

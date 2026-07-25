@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.server.level.ServerPlayer;
 
 
 public class FabricNetworkHelper implements INetworkHelper {
@@ -36,24 +37,13 @@ public class FabricNetworkHelper implements INetworkHelper {
 
     }
 
-//    public <T> void sendToServer(T packet, boolean ignoreCheck) {
-//        PacketContainer<T> container = (PacketContainer<T>) PACKET_MAP.get(packet.getClass());
-//        if (container != null) {
-//            if (ignoreCheck || ClientPlayNetworking.canSend(container.type().id()))
-//                ClientPlayNetworking.send(new CommonPacketWrapper<>(container, packet));
-//        }
-//        else
-//            throw new RegistrationException(packet.getClass() + "{} packet not registered on the client, packets need to be registered on both sides!");
-//
-//    }
-//
-//    public <T> void sendToClient(T packet, ServerPlayer player, boolean ignoreCheck) {
-//        PacketContainer<T> container = (PacketContainer<T>) PACKET_MAP.get(packet.getClass());
-//        if (container != null) {
-//            if (ignoreCheck || ServerPlayNetworking.canSend(player, container.type().id()))
-//                ServerPlayNetworking.send(player, new CommonPacketWrapper<>(container, packet));
-//        }
-//        else
-//            throw new RegistrationException(packet.getClass() + "{} packet not registered on the server, packets need to be registered on both sides!");
-//    }
+    public <T extends ICustomPacketPayload<T>> void sendToPlayer(ServerPlayer player, T packet) {
+        Constants.LOG.info("Sending packet {} to player {}", packet.type().id(), player.getGameProfile().name());
+        ServerPlayNetworking.send(player, packet);
+    }
+
+    public <T extends ICustomPacketPayload<T>> void sendToServer(T packet) {
+        Constants.LOG.info("Sending packet {} to server", packet.type().id());
+        ClientPlayNetworking.send(packet);
+    }
 }

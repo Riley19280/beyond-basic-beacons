@@ -1,15 +1,33 @@
 package com.rileystech.beyondbasicbeacons.access;
 
-// Lets the static updateBase injection write the per-beacon @Unique fields back onto the
-// specific BeaconBlockEntity it just scanned, since a static target method has no `this`.
-// Deliberately kept out of the mixin package - Mixin forbids referencing classes that live
-// inside the package declared in the mixin config from anywhere outside the transformer itself.
+import com.rileystech.beyondbasicbeacons.beacon.BeaconEffectEntry;
+
+import java.util.List;
+
+// Lets code outside the mixin package read/write the beacon's @Unique fields on a specific
+// BeaconBlockEntity instance - needed both by the static updateBase injection (which has no
+// `this`) and by BeaconMenu.getBeaconAccess() (which only has a BlockEntity looked up via
+// ContainerLevelAccess, not the mixin instance itself). Deliberately kept out of the mixin
+// package - Mixin forbids referencing classes that live inside the package declared in the
+// mixin config from anywhere outside the transformer itself.
 public interface NeighboringBeaconAccess {
-    int bbb_getBaseBlockPointTotal();
+    int bbb_getBaseBlockPoints();
 
-    void bbb_setBaseBlockPointTotal(int total);
+    void bbb_setBaseBlockPoints(int points);
 
-    int bbb_getNeighboringBeaconCount();
+    int bbb_getNeighboringBeacons();
 
-    void bbb_setNeighboringBeaconCount(int count);
+    void bbb_setNeighboringBeacons(int count);
+
+    int bbb_getLevels();
+
+    List<BeaconEffectEntry> bbb_getEffects();
+
+    int bbb_getRange();
+
+    void bbb_setRange(int range);
+
+    boolean bbb_isHideParticles();
+
+    void bbb_setHideParticles(boolean hideParticles);
 }
