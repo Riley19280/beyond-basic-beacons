@@ -6,7 +6,7 @@ import net.minecraft.network.chat.Component;
 import java.util.function.IntConsumer;
 import java.util.function.IntFunction;
 
-// A reusable integer-ranged slider (e.g. amplifier, range) built on top of AbstractSliderButton's
+// A reusable integer-ranged slider (e.g. points, range) built on top of AbstractSliderButton's
 // 0.0-1.0 backing value.
 public class IntRangeSlider extends AbstractSliderButton {
     private final int min;

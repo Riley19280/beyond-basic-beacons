@@ -1,5 +1,6 @@
 package com.rileystech.beyondbasicbeacons;
 
+import com.rileystech.beyondbasicbeacons.data.BeaconBaseBlockPointManager;
 import com.rileystech.beyondbasicbeacons.menu.MenuTypes;
 import com.rileystech.beyondbasicbeacons.packet.PacketTypes;
 import com.rileystech.beyondbasicbeacons.platform.Services;
@@ -32,5 +33,6 @@ public class CommonClass {
 
         MenuTypes.register();
         PacketTypes.register();
+
     }
 }

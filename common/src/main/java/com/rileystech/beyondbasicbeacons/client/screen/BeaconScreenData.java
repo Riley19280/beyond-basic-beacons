@@ -1,5 +1,7 @@
 package com.rileystech.beyondbasicbeacons.client.screen;
 
+import com.rileystech.beyondbasicbeacons.beacon.BeaconPoints;
+import com.rileystech.beyondbasicbeacons.data.BeaconEffectCostManager;
 import net.minecraft.core.Holder;
 import net.minecraft.world.effect.MobEffect;
 import org.jspecify.annotations.Nullable;
@@ -79,10 +81,11 @@ public class BeaconScreenData {
     }
 
     public int getRequiredPoints() {
-        int required = this.range * this.effects.size();
-        for (EffectSelection selection : this.effects) {
-            required += (int) Math.pow(4 + selection.getAmplifier(), 3);
-        }
-        return required;
+        return BeaconPoints.requiredPoints(this.range, this.effects, EffectSelection::getAmplifier, BeaconScreenData::multiplierOf, this.hideParticles);
+    }
+
+    private static double multiplierOf(EffectSelection selection) {
+        Holder.Reference<MobEffect> effect = selection.getEffect();
+        return effect != null ? BeaconEffectCostManager.getMultiplier(effect.value()) : 1.0;
     }
 }

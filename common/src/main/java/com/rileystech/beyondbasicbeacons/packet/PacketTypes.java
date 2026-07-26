@@ -7,6 +7,6 @@ import java.util.List;
 public class PacketTypes {
 
     public static void register() {
-        Services.NETWORKING.registerPacket(new BeaconPacket(0, 0, 0, List.of(), 0, false));
+        Services.NETWORKING.registerPacket(new BeaconPacket(List.of(), 1, false));
     }
 }

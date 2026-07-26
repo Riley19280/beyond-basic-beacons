@@ -3,9 +3,12 @@ package com.rileystech.beyondbasicbeacons.client.screen;
 import com.rileystech.beyondbasicbeacons.Constants;
 import com.rileystech.beyondbasicbeacons.access.NeighboringBeaconAccess;
 import com.rileystech.beyondbasicbeacons.beacon.BeaconEffectEntry;
+import com.rileystech.beyondbasicbeacons.data.BeaconEffectFilterManager;
+import com.rileystech.beyondbasicbeacons.data.BeaconSettingsManager;
 import com.rileystech.beyondbasicbeacons.menu.BeaconMenu;
 import com.rileystech.beyondbasicbeacons.packet.BeaconPacket;
 import com.rileystech.beyondbasicbeacons.platform.Services;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractScrollArea;
 import net.minecraft.client.gui.components.Button;
@@ -58,6 +61,7 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
     private @Nullable Integer pickerRowIndex;
     private @Nullable ScreenRectangle pickerRectangle;
     private @Nullable StringWidget requiredPointsWidget;
+    private @Nullable Button saveButton;
     private int leftPos;
     private int topPos;
     private int panelHeight;
@@ -65,7 +69,9 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
     public BeaconScreen(BeaconMenu menu, Inventory playerInventory, Component title) {
         super(title);
         this.menu = menu;
-        this.allEffects = BuiltInRegistries.MOB_EFFECT.listElements().toList();
+        this.allEffects = BuiltInRegistries.MOB_EFFECT.listElements()
+                .filter(effect -> BeaconEffectFilterManager.isAllowed(effect.value()))
+                .toList();
 
         // The beacon's data lives on the client's own local block entity, already kept in sync
         // by vanilla's normal block-entity update packet - no custom networking round trip
@@ -82,9 +88,6 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
         }
         NeighboringBeaconAccess beacon = beaconAccess.get();
 
-        Constants.LOG.info("BeaconScreen.syncFromMenu: {} effect(s), baseBlockPoints={}, neighboringBeacons={}, range={}, hideParticles={}",
-                beacon.bbb_getEffects().size(), beacon.bbb_getBaseBlockPoints(), beacon.bbb_getNeighboringBeacons(),
-                beacon.bbb_getRange(), beacon.bbb_isHideParticles());
 
         List<BeaconScreenData.EffectSelection> selections = new ArrayList<>();
         for (BeaconEffectEntry entry : beacon.bbb_getEffects()) {
@@ -103,13 +106,13 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
         // Placeholder combination until the real "total points available" formula is decided.
         this.data.setTotalPoints(beacon.bbb_getBaseBlockPoints() + beacon.bbb_getNeighboringBeacons());
 
-        Constants.LOG.info("BeaconScreenData synced: {} selection(s), totalPoints={}", selections.size(), this.data.getTotalPoints());
     }
 
-    // Sends the player's current edits back to the server. levels/baseBlockPoints/neighboringBeacons
-    // are server-computed and never sent from the client - the 0/0/0 here are unused placeholders,
-    // since BeaconPacket.onServerReceived only applies effects/range/hideParticles.
     private void saveToServer() {
+        if (this.data.getRequiredPoints() > this.data.getTotalPoints()) {
+            return;
+        }
+
         List<BeaconEffectEntry> effects = new ArrayList<>();
         for (BeaconScreenData.EffectSelection selection : this.data.getEffects()) {
             Holder.Reference<MobEffect> effect = selection.getEffect();
@@ -118,7 +121,7 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
             }
         }
 
-        Services.NETWORKING.sendToServer(new BeaconPacket(0, 0, 0, effects, this.data.getRange(), this.data.isHideParticles()));
+        Services.NETWORKING.sendToServer(new BeaconPacket(effects, this.data.getRange(), this.data.isHideParticles()));
     }
 
     @Override
@@ -141,6 +144,7 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
 
     @Override
     protected void init() {
+        BeaconSettingsManager.Settings settings = BeaconSettingsManager.getSettings();
         List<BeaconScreenData.EffectSelection> rows = this.data.getEffects();
         boolean pickerOpen = this.pickerRowIndex != null;
 
@@ -149,7 +153,10 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
         // computed from whatever height it actually reports rather than an assumed constant.
         Checkbox hideParticlesCheckbox = Checkbox.builder(Component.literal("Hide Particles"), this.font)
                 .selected(this.data.isHideParticles())
-                .onValueChange((checkbox, value) -> this.data.setHideParticles(value))
+                .onValueChange((checkbox, value) -> {
+                    this.data.setHideParticles(value);
+                    this.refreshRequiredPoints();
+                })
                 .build();
         int miscRowHeight = Math.max(ROW_HEIGHT, hideParticlesCheckbox.getHeight());
 
@@ -168,7 +175,7 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
 
         this.addRenderableWidget(new StringWidget(this.leftPos + MARGIN, y, PANEL_WIDTH / 2, TITLE_HEIGHT,
                 Component.literal("Beyond Basic Beacons"), this.font));
-        Component pointsText = Component.literal("Points: " + this.data.getTotalPoints());
+        Component pointsText = Component.literal("Power: " + this.data.getTotalPoints());
         int pointsWidth = this.font.width(pointsText);
         this.addRenderableWidget(new StringWidget(this.leftPos + PANEL_WIDTH - pointsWidth - MARGIN, y, pointsWidth,
                 TITLE_HEIGHT, pointsText, this.font));
@@ -190,8 +197,8 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
                             this.rebuildWidgets();
                         }));
                 rowLayout.addChild(new IntRangeSlider(0, 0, SLIDER_WIDTH, ROW_HEIGHT,
-                        0, 4, row.getAmplifier(),
-                        value -> Component.literal("Amplifier " + (value + 1)),
+                        settings.minAmplifier(), settings.maxAmplifier(), row.getAmplifier(),
+                        value -> Component.literal("Level " + (value + 1)),
                         value -> {
                             row.setAmplifier(value);
                             this.refreshRequiredPoints();
@@ -215,16 +222,17 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
             rowsScroll.visitWidgets(this::addRenderableWidget);
             y += ROWS_AREA_HEIGHT + SPACING;
 
-            this.addRenderableWidget(Button.builder(Component.literal("+"), button -> {
+            Button addButton = this.addRenderableWidget(Button.builder(Component.literal("+"), button -> {
                         this.data.addEffect();
                         this.rebuildWidgets();
                     })
                     .bounds(this.leftPos + MARGIN, y, PANEL_WIDTH - MARGIN * 2, ADD_BUTTON_HEIGHT)
                     .build());
+            addButton.active = rows.size() < settings.maxEffectsPerBeacon();
             y += ADD_BUTTON_HEIGHT + SPACING;
 
             this.addRenderableWidget(new IntRangeSlider(this.leftPos + MARGIN, y, PANEL_WIDTH - MARGIN * 2, ROW_HEIGHT,
-                    1, 100, this.data.getRange(),
+                    settings.minRange(), settings.maxRange(), this.data.getRange(),
                     value -> Component.literal("Range: " + value),
                     value -> {
                         this.data.setRange(value);
@@ -235,18 +243,19 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
             hideParticlesCheckbox.setPosition(this.leftPos + MARGIN, y);
             this.addRenderableWidget(hideParticlesCheckbox);
 
-            Component requiredText = Component.literal("Required: " + this.data.getRequiredPoints());
+            Component requiredText = this.requiredPointsText();
             int requiredWidth = this.font.width(requiredText);
             this.requiredPointsWidget = this.addRenderableWidget(new StringWidget(
                     this.leftPos + PANEL_WIDTH - requiredWidth - MARGIN, y + (miscRowHeight - TITLE_HEIGHT) / 2, requiredWidth, TITLE_HEIGHT, requiredText, this.font));
             y += miscRowHeight + SPACING;
 
-            this.addRenderableWidget(Button.builder(Component.literal("Save"), button -> {
+            this.saveButton = this.addRenderableWidget(Button.builder(Component.literal("Save"), button -> {
                         this.saveToServer();
                         this.onClose();
                     })
                     .bounds(this.leftPos + MARGIN, y, PANEL_WIDTH - MARGIN * 2, SAVE_BUTTON_HEIGHT)
                     .build());
+            this.saveButton.active = this.data.getRequiredPoints() <= this.data.getTotalPoints();
         }
 
         this.pickerRectangle = null;
@@ -297,10 +306,19 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
 
     private void refreshRequiredPoints() {
         if (this.requiredPointsWidget != null) {
-            Component requiredText = Component.literal("Required: " + this.data.getRequiredPoints());
+            Component requiredText = this.requiredPointsText();
             this.requiredPointsWidget.setX(this.leftPos + PANEL_WIDTH - this.font.width(requiredText) - MARGIN);
             this.requiredPointsWidget.setMessage(requiredText);
         }
+        if (this.saveButton != null) {
+            this.saveButton.active = this.data.getRequiredPoints() <= this.data.getTotalPoints();
+        }
+    }
+
+    private Component requiredPointsText() {
+        boolean overBudget = this.data.getRequiredPoints() > this.data.getTotalPoints();
+        Component text = Component.literal("Required: " + this.data.getRequiredPoints());
+        return overBudget ? text.copy().withStyle(ChatFormatting.RED) : text;
     }
 
     @Override
