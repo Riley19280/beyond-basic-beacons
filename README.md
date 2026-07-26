@@ -1,32 +1,116 @@
-# MultiLoader Template
+# Beyond Basic Beacons
 
-This project provides a Gradle project template that can compile Minecraft mods for multiple modloaders using a common project for the sources. This project does not require any third party libraries or dependencies. If you have any questions or want to discuss the project, please join our [Discord](https://discord.myceliummod.network).
+Vanilla beacons are fairly limited. **Beyond Basic Beacons** expands the system by letting you configure multiple effects, adjust their range, and customize each beacon individually.
 
-## Getting Started
+Built for Minecraft `1.26.2`, available for **Fabric**.
 
-### IntelliJ IDEA
-This guide will show how to import the MultiLoader Template into IntelliJ IDEA. The setup process is roughly equivalent to setting up the modloaders independently and should be very familiar to anyone who has worked with their MDKs.
+## Features
 
-1. Clone or download this repository to your computer.
-2. Configure the project by setting the properties in the `gradle.properties` file. You will also need to change the `rootProject.name`  property in `settings.gradle`, this should match the folder name of your project, or else IDEA may complain.
-3. Open the template's root folder as a new project in IDEA. This is the folder that contains this README.md file and the gradlew executable.
-4. If your default JVM/JDK is not Java 25 you will encounter an error when opening the project. This error is fixed by going to `File > Settings > Build, Execution, Deployment > Build Tools > Gradle > Gradle JVM` and changing the value to a valid Java 25 JVM. You will also need to set the Project SDK to Java 25. This can be done by going to `File > Project Structure > Project SDK`. Once both have been set open the Gradle tab in IDEA and click the refresh button to reload the project.
-5. Open your Run/Debug Configurations. Under the `Application` category there should now be options to run Fabric and NeoForge projects. Select one of the client options and try to run it.
-6. Assuming you were able to run the game in step 5 your workspace should now be set up.
+### Multiple effects
 
-### Eclipse
-While it is possible to use this template in Eclipse it is not recommended. During the development of this template multiple critical bugs and quirks related to Eclipse were found at nearly every level of the required build tools. While we continue to work with these tools to report and resolve issues support for projects like these are not there yet. For now Eclipse is considered unsupported by this project. The development cycle for build tools is notoriously slow so there are no ETAs available.
+Instead of choosing a single primary effect, each beacon can support multiple effects. Each effect has its own amplifier and can be changed at any time through an icon picker.
 
-## Development Guide
-When using this template the majority of your mod should be developed in the `common` project. The `common` project is compiled against the vanilla game and is used to hold code that is shared between the different loader-specific versions of your mod. The `common` project has no knowledge or access to ModLoader specific code, apis, or concepts. Code that requires something from a specific loader must be done through the project that is specific to that loader, such as the `fabric` or `neoforge` projects.
+![Effect picker](docs/screenshots/effect-picker.png)
 
-Loader specific projects such as the `fabric` and `neoforge` project are used to load the `common` project into the game. These projects also define code that is specific to that loader. Loader specific projects can access all the code in the `common` project. It is important to remember that the `common` project can not access code from loader specific projects.
+### Beacon power system
 
-## Removing Platforms and Loaders
-While this template has support for many modloaders, new loaders may appear in the future, and existing loaders may become less relevant.
+Larger beacon bases provide more available power, allowing additional effects, stronger amplifiers, or larger ranges. The interface displays your current power usage, and highlights when you've exceeded the available budget.
 
-Removing loader specific projects is as easy as deleting the folder, and removing the `include("projectname")` line from the `settings.gradle` file.
-For example if you wanted to remove support for `forge` you would follow the following steps:
+### Neighboring beacons
 
-1. Delete the subproject folder. For example, delete `MultiLoader-Template/forge`.
-2. Remove the project from `settings.gradle`. For example, remove `include("forge")`. 
+Build beacons too close together and they'll split their available power between them instead of each getting the full amount. When that happens, a warning appears with a tooltip showing how many neighbors it's being shared with.
+
+![Neighboring beacon warning](docs/screenshots/neighbor-warning.png)
+
+## Configuration
+
+Beyond Basic Beacons utilizes configuration through datapacks.
+
+### `beacon_settings` — Global settings
+
+Path: `data/<namespace>/beacon_settings/*.json`
+
+This resource contains a single settings object. If multiple datapacks provide the same file, the highest-priority datapack replaces the entire file. All fields are required.
+
+```json
+{
+  "min_range": 1,
+  "max_range": 100,
+  "min_amplifier": 0,
+  "max_amplifier": 4,
+  "max_beacon_size": 10,
+  "neighboring_beacon_check_range_xz": 2,
+  "neighboring_beacon_check_range_y": 1,
+  "max_effects_per_beacon": 10
+}
+```
+
+| Field | Default | Description |
+|---|--------:|---|
+| `min_range` / `max_range` | 1 / 100 | Minimum and maximum beacon range. |
+| `min_amplifier` / `max_amplifier` |   0 / 4 | Allowed amplifier values. |
+| `max_beacon_size` |       5 | Maximum beacon pyramid size that will be checked. |
+| `neighboring_beacon_check_range_xz` / `neighboring_beacon_check_range_y` |   2 / 1 | Horizontal and vertical search radius for nearby beacons. |
+| `max_effects_per_beacon` |      10 | Maximum number of effects a beacon can have. |
+
+If no datapack provides this file, the default values above are used.
+
+### `beacon_base_block_points` — Base block values
+
+Path: `data/<namespace>/beacon_base_block_points/*.json`
+
+All datapacks contribute to this registry. Every `values` entry is merged together, with higher-priority datapacks overriding individual blocks when duplicates exist.
+
+```json
+{
+  "values": [
+    { "block": "minecraft:iron_block", "points": 1 },
+    { "block": "minecraft:gold_block", "points": 2 },
+    { "block": "minecraft:diamond_block", "points": 3 },
+    { "block": "minecraft:emerald_block", "points": 3 },
+    { "block": "minecraft:netherite_block", "points": 10 }
+  ]
+}
+```
+
+Blocks that are not listed contribute `0` points.
+
+### `beacon_effect_filters` — Allowed and blocked effects
+
+Path: `data/<namespace>/beacon_effect_filters/*.json`
+
+Both fields are optional and default to empty lists. Lists from all datapacks are merged together.
+
+```json
+{
+  "blacklist": ["minecraft:instant_damage"],
+  "whitelist": []
+}
+```
+
+- An empty whitelist allows every registered effect except those in the blacklist.
+- A non-empty whitelist limits selectable effects to only those listed.
+- If an effect appears in both lists, the blacklist takes precedence.
+
+### `beacon_effect_costs` — Effect cost multipliers
+
+Path: `data/<namespace>/beacon_effect_costs/*.json`
+
+Like `beacon_base_block_points`, entries from all datapacks are merged together, with higher-priority datapacks overriding duplicate effects.
+
+```json
+{
+  "values": [
+    { "effect": "minecraft:strength", "multiplier": 1.5 },
+    { "effect": "minecraft:regeneration", "multiplier": 2.0 }
+  ]
+}
+```
+
+The power cost for an effect is calculated as:
+
+```text
+(2 + amplifier)² × range × multiplier
+```
+
+Effects that are not listed use a multiplier of `1.0`.

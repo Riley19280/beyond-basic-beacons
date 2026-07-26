@@ -39,6 +39,7 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
     private static final int MARGIN = 8;
     private static final int SPACING = 4;
     private static final int TITLE_HEIGHT = 12;
+    private static final int POWER_ICON_SIZE = 16;
     private static final int ROW_HEIGHT = 20;
     private static final int EFFECT_BUTTON_WIDTH = 110;
     private static final int SLIDER_WIDTH = 80;
@@ -105,7 +106,7 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
 
         // Placeholder combination until the real "total points available" formula is decided.
         this.data.setTotalPoints(beacon.bbb_getBaseBlockPoints() + beacon.bbb_getNeighboringBeacons());
-
+        this.data.setNeighboringBeacons(beacon.bbb_getNeighboringBeacons());
     }
 
     private void saveToServer() {
@@ -179,6 +180,16 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
         int pointsWidth = this.font.width(pointsText);
         this.addRenderableWidget(new StringWidget(this.leftPos + PANEL_WIDTH - pointsWidth - MARGIN, y, pointsWidth,
                 TITLE_HEIGHT, pointsText, this.font));
+
+        int neighboringBeacons = this.data.getNeighboringBeacons();
+        if (neighboringBeacons > 0) {
+            Component sharedTooltip = Component.literal("Beacon power is being shared with " + neighboringBeacons
+                    + " other beacon" + (neighboringBeacons == 1 ? "" : "s"));
+            this.addRenderableWidget(new BeaconIconWidget(
+                    this.leftPos + PANEL_WIDTH - pointsWidth - MARGIN - SPACING - POWER_ICON_SIZE,
+                    y + (TITLE_HEIGHT - POWER_ICON_SIZE) / 2,
+                    POWER_ICON_SIZE, this.font, sharedTooltip));
+        }
         y += TITLE_HEIGHT + SPACING;
 
         // While the picker popup is open, the rest of the panel's widgets are left out entirely

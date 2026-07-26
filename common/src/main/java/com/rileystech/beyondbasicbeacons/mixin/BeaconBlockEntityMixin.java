@@ -212,9 +212,7 @@ public abstract class BeaconBlockEntityMixin extends BlockEntity implements Neig
             }
         }
 
-        if (neighboringBeacons > 0) {
-            baseBlockPoints /= neighboringBeacons;
-        }
+        baseBlockPoints /= neighboringBeacons + 1;
 
         BlockEntity blockEntity = level.getBlockEntity(new BlockPos(x, y, z));
         if (blockEntity instanceof NeighboringBeaconAccess beacon) {

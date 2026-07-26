@@ -38,6 +38,7 @@ public class BeaconScreenData {
     private int range = 50;
     private boolean hideParticles = false;
     private int totalPoints = 10;
+    private int neighboringBeacons = 0;
 
     public List<EffectSelection> getEffects() {
         return this.effects;
@@ -78,6 +79,14 @@ public class BeaconScreenData {
 
     public void setTotalPoints(int totalPoints) {
         this.totalPoints = totalPoints;
+    }
+
+    public int getNeighboringBeacons() {
+        return this.neighboringBeacons;
+    }
+
+    public void setNeighboringBeacons(int neighboringBeacons) {
+        this.neighboringBeacons = neighboringBeacons;
     }
 
     public int getRequiredPoints() {

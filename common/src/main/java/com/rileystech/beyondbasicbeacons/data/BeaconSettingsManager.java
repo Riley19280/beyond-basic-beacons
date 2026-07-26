@@ -25,7 +25,7 @@ public class BeaconSettingsManager extends SimpleJsonResourceReloadListener<Beac
     public record Settings(int minRange, int maxRange, int minAmplifier, int maxAmplifier,
                             int maxBeaconSize, int neighboringBeaconCheckRangeXZ, int neighboringBeaconCheckRangeY,
                             int maxEffectsPerBeacon) {
-        public static final Settings DEFAULT = new Settings(1, 100, 0, 4, 10, 2, 1, 5);
+        public static final Settings DEFAULT = new Settings(1, 100, 0, 4, 5, 2, 1, 10);
 
         public static final Codec<Settings> CODEC = RecordCodecBuilder.create(instance ->
                 instance.group(
