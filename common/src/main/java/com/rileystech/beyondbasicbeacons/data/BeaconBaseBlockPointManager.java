@@ -2,6 +2,7 @@ package com.rileystech.beyondbasicbeacons.data;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import com.rileystech.beyondbasicbeacons.Constants;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.FileToIdConverter;
@@ -54,9 +55,12 @@ public class BeaconBaseBlockPointManager extends SimpleJsonResourceReloadListene
             for (Entry entry : entries.values()) {
                 Identifier blockId = Identifier.parse(entry.block());
                 ResourceKey<Block> key = ResourceKey.create(Registries.BLOCK, blockId);
-                BuiltInRegistries.BLOCK.get(key).ifPresent(block -> blockPointMap.put(block.value(), entry.points()));
+                BuiltInRegistries.BLOCK.get(key).ifPresentOrElse(block -> blockPointMap.put(block.value(), entry.points()),
+                        () -> Constants.LOG.warn("BeaconBaseBlockPointManager: could not resolve block '{}' - skipping", entry.block()));
             }
         }
+        Constants.LOG.info("BeaconBaseBlockPointManager: loaded {} file(s), {} block point entr{}",
+                data.size(), blockPointMap.size(), blockPointMap.size() == 1 ? "y" : "ies");
     }
 
     public static BeaconBaseBlockPointManager getInstance() {

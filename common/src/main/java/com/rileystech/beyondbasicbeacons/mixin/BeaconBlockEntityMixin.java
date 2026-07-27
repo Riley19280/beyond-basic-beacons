@@ -26,6 +26,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BeaconBlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -66,6 +67,19 @@ public abstract class BeaconBlockEntityMixin extends BlockEntity implements Neig
 
     public BeaconBlockEntityMixin(BlockEntityType<?> type, BlockPos pos, BlockState blockState) {
         super(type, pos, blockState);
+    }
+
+    // setChanged() only marks the chunk dirty for disk saving - it does NOT notify nearby clients
+    // on its own. Overriding it here (per Fabric's block entity syncing guide) means every call to
+    // setChanged(), from anywhere, broadcasts the update - instead of every caller needing to
+    // remember to also call sendBlockUpdated themselves.
+    @Override
+    public void setChanged() {
+        super.setChanged();
+        if (this.level != null) {
+            BlockState state = this.getBlockState();
+            this.level.sendBlockUpdated(this.getBlockPos(), state, state, Block.UPDATE_CLIENTS);
+        }
     }
 
     @Override
@@ -196,32 +210,40 @@ public abstract class BeaconBlockEntityMixin extends BlockEntity implements Neig
             }
         }
 
-        int neighboringBeacons = 0;
-        int checkRangeXZ = settings.neighboringBeaconCheckRangeXZ();
-        int checkRangeY = settings.neighboringBeaconCheckRangeY();
-        for (int nx = x - checkRangeXZ; nx <= x + checkRangeXZ; ++nx) {
-            for (int ny = y - checkRangeY; ny <= y + checkRangeY; ++ny) {
-                for (int nz = z - checkRangeXZ; nz <= z + checkRangeXZ; ++nz) {
-                    if (nx == x && ny == y && nz == z) {
-                        continue;
-                    }
-                    if (level.getBlockState(new BlockPos(nx, ny, nz)).is(Blocks.BEACON)) {
-                        neighboringBeacons++;
+        // baseBlockPoints/neighboringBeacons are driven by server-only datapacks
+        // (BeaconBaseBlockPointManager/BeaconSettingsManager are registered for PackType.SERVER_DATA,
+        // which never loads on a real client in true multiplayer - only on the logical server, or
+        // incidentally on a singleplayer integrated server sharing the same process). If the client
+        // also computed and applied these, its always-empty local copy of that data would silently
+        // overwrite the correct value it already received from the server's sync packet.
+        if (!level.isClientSide()) {
+            int neighboringBeacons = 0;
+            int checkRangeXZ = settings.neighboringBeaconCheckRangeXZ();
+            int checkRangeY = settings.neighboringBeaconCheckRangeY();
+            for (int nx = x - checkRangeXZ; nx <= x + checkRangeXZ; ++nx) {
+                for (int ny = y - checkRangeY; ny <= y + checkRangeY; ++ny) {
+                    for (int nz = z - checkRangeXZ; nz <= z + checkRangeXZ; ++nz) {
+                        if (nx == x && ny == y && nz == z) {
+                            continue;
+                        }
+                        if (level.getBlockState(new BlockPos(nx, ny, nz)).is(Blocks.BEACON)) {
+                            neighboringBeacons++;
+                        }
                     }
                 }
             }
-        }
 
-        baseBlockPoints /= neighboringBeacons + 1;
+            baseBlockPoints /= neighboringBeacons + 1;
 
-        BlockEntity blockEntity = level.getBlockEntity(new BlockPos(x, y, z));
-        if (blockEntity instanceof NeighboringBeaconAccess beacon) {
-            boolean changed = beacon.bbb_getBaseBlockPoints() != baseBlockPoints
-                    || beacon.bbb_getNeighboringBeacons() != neighboringBeacons;
-            beacon.bbb_setBaseBlockPoints(baseBlockPoints);
-            beacon.bbb_setNeighboringBeacons(neighboringBeacons);
-            if (changed) {
-                blockEntity.setChanged();
+            BlockEntity blockEntity = level.getBlockEntity(new BlockPos(x, y, z));
+            if (blockEntity instanceof NeighboringBeaconAccess beacon) {
+                boolean changed = beacon.bbb_getBaseBlockPoints() != baseBlockPoints
+                        || beacon.bbb_getNeighboringBeacons() != neighboringBeacons;
+                beacon.bbb_setBaseBlockPoints(baseBlockPoints);
+                beacon.bbb_setNeighboringBeacons(neighboringBeacons);
+                if (changed) {
+                    blockEntity.setChanged();
+                }
             }
         }
 

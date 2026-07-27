@@ -21,10 +21,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffect;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.state.BlockState;
 import org.jspecify.annotations.NonNull;
 
 import java.util.ArrayList;
@@ -125,16 +122,6 @@ public class BeaconPacket implements ICustomPacketPayload<BeaconPacket> {
             beacon.bbb_setHideParticles(this.hideParticles);
             if (beacon instanceof BlockEntity blockEntity) {
                 blockEntity.setChanged();
-
-                // setChanged() only marks the chunk dirty for disk saving - it does NOT notify
-                // nearby clients on its own. sendBlockUpdated is what actually pushes the block
-                // entity's updated data to them (same old/current state since the block itself
-                // hasn't changed, just its entity data).
-                Level level = blockEntity.getLevel();
-                if (level != null) {
-                    BlockState state = blockEntity.getBlockState();
-                    level.sendBlockUpdated(blockEntity.getBlockPos(), state, state, Block.UPDATE_CLIENTS);
-                }
             }
             Constants.LOG.info("Applied saved beacon data for {}", sender.getGameProfile().name());
         }, () -> Constants.LOG.info("No beacon block entity found for {}'s open menu - ignoring", sender.getGameProfile().name()));

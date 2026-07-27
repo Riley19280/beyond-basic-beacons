@@ -29,7 +29,6 @@ public class BeyondBasicBeacons implements ModInitializer, ClientModInitializer 
         // project.
 
         // Use Fabric to bootstrap the Common mod.
-        Constants.LOG.info("Hello Fabric world!");
         CommonClass.init();
 
         // Registered here (not onInitializeClient) so these actually load on a dedicated server too -
