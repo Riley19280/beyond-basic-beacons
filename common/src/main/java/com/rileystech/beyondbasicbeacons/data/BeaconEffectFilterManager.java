@@ -74,4 +74,15 @@ public class BeaconEffectFilterManager extends SimpleJsonResourceReloadListener<
         }
         return !blacklist.contains(effect);
     }
+
+    // Server-only (this manager's reload listener is PackType.SERVER_DATA, so a real client's own
+    // copy is always empty) - used to hand the resolved allowed-effect list to the client via
+    // BeaconMenuData at menu-open time, instead of the client trying to filter with its own
+    // (always-empty) blacklist/whitelist.
+    public static List<String> getAllowedEffectIds() {
+        return BuiltInRegistries.MOB_EFFECT.listElements()
+                .filter(effect -> isAllowed(effect.value()))
+                .map(effect -> effect.key().identifier().toString())
+                .toList();
+    }
 }

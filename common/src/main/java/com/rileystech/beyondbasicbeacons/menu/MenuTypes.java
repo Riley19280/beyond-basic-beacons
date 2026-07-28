@@ -1,7 +1,6 @@
 package com.rileystech.beyondbasicbeacons.menu;
 import com.rileystech.beyondbasicbeacons.Constants;
 import com.rileystech.beyondbasicbeacons.platform.Services;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -13,7 +12,7 @@ import net.minecraft.world.inventory.MenuType;
 
 public class MenuTypes {
 
-    public static final MenuType<BeaconMenu> BBB_BEACON_MENU = registerExtended(BeaconMenu.IDENTIFIER, BeaconMenu::new, BlockPos.STREAM_CODEC);
+    public static final MenuType<BeaconMenu> BBB_BEACON_MENU = registerExtended(BeaconMenu.IDENTIFIER, BeaconMenu::new, BeaconMenuData.STREAM_CODEC);
 
     public static void register() {
         // no-op; referencing the class triggers the static field initializers above

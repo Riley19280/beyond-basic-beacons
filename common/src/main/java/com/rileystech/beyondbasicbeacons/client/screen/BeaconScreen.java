@@ -3,7 +3,6 @@ package com.rileystech.beyondbasicbeacons.client.screen;
 import com.rileystech.beyondbasicbeacons.Constants;
 import com.rileystech.beyondbasicbeacons.access.NeighboringBeaconAccess;
 import com.rileystech.beyondbasicbeacons.beacon.BeaconEffectEntry;
-import com.rileystech.beyondbasicbeacons.data.BeaconEffectFilterManager;
 import com.rileystech.beyondbasicbeacons.data.BeaconSettingsManager;
 import com.rileystech.beyondbasicbeacons.menu.BeaconMenu;
 import com.rileystech.beyondbasicbeacons.packet.BeaconPacket;
@@ -70,9 +69,11 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
     public BeaconScreen(BeaconMenu menu, Inventory playerInventory, Component title) {
         super(title);
         this.menu = menu;
-        this.allEffects = BuiltInRegistries.MOB_EFFECT.listElements()
-                .filter(effect -> BeaconEffectFilterManager.isAllowed(effect.value()))
-                .toList();
+        // Read from the menu (populated from the server at menu-open time via BeaconMenuData), not
+        // BeaconEffectFilterManager.isAllowed(...) directly - that manager's reload listener only
+        // ever runs on the logical server, so the client's own copy would otherwise always be
+        // unfiltered (empty blacklist/whitelist).
+        this.allEffects = menu.getAllowedEffects();
 
         // The beacon's data lives on the client's own local block entity, already kept in sync
         // by vanilla's normal block-entity update packet - no custom networking round trip
@@ -145,7 +146,10 @@ public class BeaconScreen extends Screen implements MenuAccess<BeaconMenu> {
 
     @Override
     protected void init() {
-        BeaconSettingsManager.Settings settings = BeaconSettingsManager.getSettings();
+        // Read from the menu (populated from the server at menu-open time via BeaconMenuData), not
+        // BeaconSettingsManager.getSettings() directly - that manager's reload listener only ever
+        // runs on the logical server, so the client's own copy would otherwise always be default.
+        BeaconSettingsManager.Settings settings = this.menu.getSettings();
         List<BeaconScreenData.EffectSelection> rows = this.data.getEffects();
         boolean pickerOpen = this.pickerRowIndex != null;
 
