@@ -1,14 +1,24 @@
 name: Release
 
 # Manually triggered from the Actions tab ("Run workflow").
-# Bump `version` in gradle.properties and push to main first - this workflow reads that version,
-# runs the full build (unit tests + GameTests), then creates the tag `v<version>` and a GitHub
-# release with the Fabric and NeoForge jars attached.
+# Bump `version` in gradle.properties and push to main first. This workflow reads that version,
+# runs the full build (unit tests + GameTests on both loaders), then publishes with mc-publish:
+#   1. Fabric jar   -> Modrinth + CurseForge
+#   2. NeoForge jar -> Modrinth + CurseForge
+#   3. GitHub release `v<version>` with both jars (this creates the tag, so it goes last - the tag
+#      only exists once everything else has been published)
+#
+# Required repository settings (Settings -> Secrets and variables -> Actions):
+#   Variables: MODRINTH_ID, CURSEFORGE_ID       (project IDs - not secret)
+#   Secrets:   MODRINTH_TOKEN, CURSEFORGE_TOKEN (API tokens)
+#
+# Loaders, Minecraft versions, Java version and dependencies (e.g. Fabric API) are read by
+# mc-publish from each jar's fabric.mod.json / neoforge.mods.toml.
 on:
   workflow_dispatch:
     inputs:
       prerelease:
-        description: Mark as a pre-release
+        description: Publish as a beta (pre-release) instead of a release
         type: boolean
         default: false
 
@@ -30,12 +40,32 @@ jobs:
           echo "::error::Releases must be run from main (got ${GITHUB_REF})"
           exit 1
 
+      # Checked before anything is built or published, so a missing secret can't leave a release
+      # half-published (e.g. on Modrinth but not CurseForge).
+      - name: Check publishing configuration
+        env:
+          MODRINTH_ID: ${{ vars.MODRINTH_ID }}
+          CURSEFORGE_ID: ${{ vars.CURSEFORGE_ID }}
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+        run: |
+          missing=0
+          for name in MODRINTH_ID CURSEFORGE_ID; do
+            [ -n "${!name}" ] || { echo "::error::Repository variable ${name} is not set"; missing=1; }
+          done
+          for name in MODRINTH_TOKEN CURSEFORGE_TOKEN; do
+            [ -n "${!name}" ] || { echo "::error::Repository secret ${name} is not set"; missing=1; }
+          done
+          exit $missing
+
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # needs existing tags for the duplicate check and release notes
 
       - name: Read version
         id: version
+        env:
+          PRERELEASE: ${{ inputs.prerelease }}
         run: |
           version=$(grep -E '^version=' gradle.properties | cut -d= -f2 | tr -d '[:space:]')
           if [ -z "$version" ]; then
@@ -47,9 +77,13 @@ jobs:
             echo "::error::Tag ${tag} already exists - bump version in gradle.properties first"
             exit 1
           fi
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
-          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
-          echo "Releasing ${tag}"
+          if [ "$PRERELEASE" = "true" ]; then type=beta; else type=release; fi
+          {
+            echo "version=${version}"
+            echo "tag=${tag}"
+            echo "type=${type}"
+          } >> "$GITHUB_OUTPUT"
+          echo "Releasing ${tag} as ${type}"
 
       - name: Set up JDK 25
         uses: actions/setup-java@v5
@@ -60,7 +94,7 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
 
-      # Same as CI: unit tests, GameTests, and both loader jars. Nothing is tagged if this fails.
+      # Same as CI: unit tests, GameTests on both loaders, and both jars. Nothing is published if this fails.
       - name: Build and test
         run: ./gradlew build --stacktrace
 
@@ -70,34 +104,84 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           # Only the mod jars - not the -sources/-javadoc jars or the internal common jar.
-          files=$(ls fabric/build/libs/*-"${VERSION}".jar neoforge/build/libs/*-"${VERSION}".jar)
-          echo "$files"
-          [ "$(echo "$files" | wc -l)" -eq 2 ] || { echo "::error::Expected exactly 2 jars"; exit 1; }
-          {
-            echo "files<<EOF"
-            echo "$files"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+          fabric=$(ls fabric/build/libs/*-"${VERSION}".jar)
+          neoforge=$(ls neoforge/build/libs/*-"${VERSION}".jar)
+          for jar in "$fabric" "$neoforge"; do
+            [ "$(echo "$jar" | wc -l)" -eq 1 ] && [ -f "$jar" ] || { echo "::error::Expected exactly one jar, got: ${jar}"; exit 1; }
+          done
+          echo "fabric=${fabric}" >> "$GITHUB_OUTPUT"
+          echo "neoforge=${neoforge}" >> "$GITHUB_OUTPUT"
+          echo "Fabric:   ${fabric}"
+          echo "NeoForge: ${neoforge}"
 
-      - name: Create tag and release
+      # GitHub's auto-generated notes (commits/PRs since the previous tag), used as the changelog on
+      # all three platforms so they match.
+      - name: Generate changelog
+        id: changelog
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.tag }}
-          PRERELEASE: ${{ inputs.prerelease }}
-          FILES: ${{ steps.jars.outputs.files }}
         run: |
-          flags=()
-          if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
-          # --target creates the tag on the exact commit that was just built and tested.
-          # shellcheck disable=SC2086
-          gh release create "$TAG" $FILES \
-            --target "$GITHUB_SHA" \
-            --title "$TAG" \
-            --generate-notes \
-            "${flags[@]}"
+          notes=$(gh api -X POST "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+            -f tag_name="$TAG" -f target_commitish="$GITHUB_SHA" --jq .body)
+          delimiter="EOF_$(openssl rand -hex 8)"
+          {
+            echo "body<<${delimiter}"
+            echo "$notes"
+            echo "${delimiter}"
+          } >> "$GITHUB_OUTPUT"
+          echo "$notes"
+
+      - name: Publish Fabric to Modrinth and CurseForge
+        uses: Kira-NT/mc-publish@v3
+        with:
+          modrinth-id: ${{ vars.MODRINTH_ID }}
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          curseforge-id: ${{ vars.CURSEFORGE_ID }}
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+          files: ${{ steps.jars.outputs.fabric }}
+          name: Beyond Basic Beacons ${{ steps.version.outputs.version }} (Fabric)
+          version: ${{ steps.version.outputs.version }}+fabric
+          version-type: ${{ steps.version.outputs.type }}
+          changelog: ${{ steps.changelog.outputs.body }}
+          loaders: fabric
+          # Both sides: the server runs the beacon logic, the client needs the custom screen.
+          environment: client | server
+
+      - name: Publish NeoForge to Modrinth and CurseForge
+        uses: Kira-NT/mc-publish@v3
+        with:
+          modrinth-id: ${{ vars.MODRINTH_ID }}
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          curseforge-id: ${{ vars.CURSEFORGE_ID }}
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+          files: ${{ steps.jars.outputs.neoforge }}
+          name: Beyond Basic Beacons ${{ steps.version.outputs.version }} (NeoForge)
+          version: ${{ steps.version.outputs.version }}+neoforge
+          version-type: ${{ steps.version.outputs.type }}
+          changelog: ${{ steps.changelog.outputs.body }}
+          loaders: neoforge
+          environment: client | server
+
+      - name: Create GitHub release
+        uses: Kira-NT/mc-publish@v3
+        with:
+          github-token: ${{ github.token }}
+          github-tag: ${{ steps.version.outputs.tag }}
+          # Creates the tag on the exact commit that was just built, tested and published.
+          github-commitish: ${{ github.sha }}
+          files: |
+            ${{ steps.jars.outputs.fabric }}
+            ${{ steps.jars.outputs.neoforge }}
+          name: ${{ steps.version.outputs.tag }}
+          version: ${{ steps.version.outputs.version }}
+          version-type: ${{ steps.version.outputs.type }}
+          changelog: ${{ steps.changelog.outputs.body }}
 
       - name: Upload jars to the run as well
         uses: actions/upload-artifact@v4
         with:
           name: release-jars-${{ steps.version.outputs.tag }}
-          path: ${{ steps.jars.outputs.files }}
+          path: |
+            ${{ steps.jars.outputs.fabric }}
+            ${{ steps.jars.outputs.neoforge }}
