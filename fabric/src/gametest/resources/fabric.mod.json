@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "beyondbasicbeacons_gametest",
+  "version": "1.0.0",
+  "name": "Beyond Basic Beacons GameTests",
+  "description": "Test-only mod: GameTests and a test datapack. Never shipped.",
+  "license": "GPLv3",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-gametest": [
+      "com.rileystech.beyondbasicbeacons.gametest.BeaconBaseGameTests",
+      "com.rileystech.beyondbasicbeacons.gametest.BeaconEffectsGameTests",
+      "com.rileystech.beyondbasicbeacons.gametest.BeaconPacketGameTests",
+      "com.rileystech.beyondbasicbeacons.gametest.BeaconPersistenceGameTests",
+      "com.rileystech.beyondbasicbeacons.gametest.DatapackLoadingGameTests"
+    ]
+  },
+  "mixins": [
+    "beyondbasicbeacons_gametest.mixins.json"
+  ],
+  "depends": {
+    "beyondbasicbeacons": "*",
+    "fabric-gametest-api-v1": "*"
+  }
+}

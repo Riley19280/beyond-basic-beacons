@@ -1,0 +1,103 @@
+name: Release
+
+# Manually triggered from the Actions tab ("Run workflow").
+# Bump `version` in gradle.properties and push to main first - this workflow reads that version,
+# runs the full build (unit tests + GameTests), then creates the tag `v<version>` and a GitHub
+# release with the Fabric and NeoForge jars attached.
+on:
+  workflow_dispatch:
+    inputs:
+      prerelease:
+        description: Mark as a pre-release
+        type: boolean
+        default: false
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Only release from main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Releases must be run from main (got ${GITHUB_REF})"
+          exit 1
+
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # needs existing tags for the duplicate check and release notes
+
+      - name: Read version
+        id: version
+        run: |
+          version=$(grep -E '^version=' gradle.properties | cut -d= -f2 | tr -d '[:space:]')
+          if [ -z "$version" ]; then
+            echo "::error::No version= found in gradle.properties"
+            exit 1
+          fi
+          tag="v${version}"
+          if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+            echo "::error::Tag ${tag} already exists - bump version in gradle.properties first"
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "Releasing ${tag}"
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      # Same as CI: unit tests, GameTests, and both loader jars. Nothing is tagged if this fails.
+      - name: Build and test
+        run: ./gradlew build --stacktrace
+
+      - name: Collect jars
+        id: jars
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Only the mod jars - not the -sources/-javadoc jars or the internal common jar.
+          files=$(ls fabric/build/libs/*-"${VERSION}".jar neoforge/build/libs/*-"${VERSION}".jar)
+          echo "$files"
+          [ "$(echo "$files" | wc -l)" -eq 2 ] || { echo "::error::Expected exactly 2 jars"; exit 1; }
+          {
+            echo "files<<EOF"
+            echo "$files"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create tag and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          PRERELEASE: ${{ inputs.prerelease }}
+          FILES: ${{ steps.jars.outputs.files }}
+        run: |
+          flags=()
+          if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
+          # --target creates the tag on the exact commit that was just built and tested.
+          # shellcheck disable=SC2086
+          gh release create "$TAG" $FILES \
+            --target "$GITHUB_SHA" \
+            --title "$TAG" \
+            --generate-notes \
+            "${flags[@]}"
+
+      - name: Upload jars to the run as well
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-jars-${{ steps.version.outputs.tag }}
+          path: ${{ steps.jars.outputs.files }}

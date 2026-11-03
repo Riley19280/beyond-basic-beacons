@@ -192,6 +192,9 @@ public abstract class BeaconBlockEntityMixin extends BlockEntity implements Neig
             }
 
             boolean isOk = true;
+            // Summed separately and only added once the whole layer is confirmed complete - an
+            // incomplete layer isn't part of the pyramid, so none of its blocks should give power.
+            int layerPoints = 0;
 
             for (int lx = x - step; lx <= x + step && isOk; ++lx) {
                 for (int lz = z - step; lz <= z + step; ++lz) {
@@ -201,13 +204,15 @@ public abstract class BeaconBlockEntityMixin extends BlockEntity implements Neig
                         break;
                     }
 
-                    baseBlockPoints += BeaconBaseBlockPointManager.getBlockPointMap().getOrDefault(blockState.getBlock(), 0);
+                    layerPoints += BeaconBaseBlockPointManager.getBlockPointMap().getOrDefault(blockState.getBlock(), 0);
                 }
             }
 
             if (!isOk) {
                 break;
             }
+
+            baseBlockPoints += layerPoints;
         }
 
         // baseBlockPoints/neighboringBeacons are driven by server-only datapacks

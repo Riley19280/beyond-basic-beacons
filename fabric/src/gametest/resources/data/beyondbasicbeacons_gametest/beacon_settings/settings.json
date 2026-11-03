@@ -1,0 +1,10 @@
+{
+  "min_range": 1,
+  "max_range": 64,
+  "min_amplifier": 0,
+  "max_amplifier": 3,
+  "max_beacon_size": 2,
+  "neighboring_beacon_check_range_xz": 2,
+  "neighboring_beacon_check_range_y": 1,
+  "max_effects_per_beacon": 4
+}

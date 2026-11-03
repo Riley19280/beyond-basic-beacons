@@ -1,0 +1,4 @@
+{
+  "blacklist": ["minecraft:wither"],
+  "whitelist": []
+}

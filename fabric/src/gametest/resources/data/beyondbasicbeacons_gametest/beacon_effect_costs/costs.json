@@ -1,0 +1,5 @@
+{
+  "values": [
+    { "effect": "minecraft:jump_boost", "multiplier": 2.0 }
+  ]
+}

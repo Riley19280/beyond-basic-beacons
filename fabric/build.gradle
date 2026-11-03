@@ -29,6 +29,29 @@ loom {
     }
 }
 
+// GameTests live in their own `gametest` source set (src/gametest) as a separate test mod, so
+// none of the test code or test datapack ships in the release jar. `runGameTest` boots a headless
+// dedicated server, runs every @GameTest, then exits - and is wired into `check`, so `./gradlew build`
+// runs them too.
+fabricApi {
+    configureTests {
+        createSourceSet = true
+        modId = "${mod_id}_gametest"
+        enableGameTests = true
+        enableClientGameTests = false
+        // The test server won't start without an accepted Minecraft EULA.
+        eula = true
+    }
+}
+
+loom {
+    runs {
+        named('gameTest') {
+            vmArg "-Dfabric-api.gametest.report-file=${layout.buildDirectory.file('test-results/gameTest/TEST-gametest.xml').get().asFile}"
+        }
+    }
+}
+
 // Implement mcgradleconventions loader attribute
 def loaderAttribute = Attribute.of('io.github.mcgradleconventions.loader', String)
 ['apiElements', 'runtimeElements', 'sourcesElements', 'javadocElements', 'includeInternal', 'modCompileClasspath'].each { variant ->
