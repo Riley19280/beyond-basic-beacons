@@ -41,6 +41,48 @@ neoForge {
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
+// GameTests: the tests themselves are shared with Fabric (common/src/gametest); src/gametest only
+// holds the NeoForge registration glue. It's a separate test-only mod, so none of it ships in the
+// release jar. `runGameTestServer` boots a headless test server, runs every test, and exits non-zero
+// if any fail - it's wired into `check`, so `./gradlew build` runs it too.
+sourceSets {
+    gametest {
+        java.srcDir(project(':common').file('src/gametest/java'))
+        resources.srcDir(project(':common').file('src/gametest/resources'))
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+neoForge {
+    addModdingDependenciesTo(sourceSets.gametest)
+    mods {
+        beyondbasicbeacons_gametest {
+            sourceSet sourceSets.gametest
+        }
+    }
+    runs {
+        gameTestServer {
+            type = 'gameTestServer'
+            sourceSet = sourceSets.gametest
+            loadedMods = [mods."${mod_id}", mods.beyondbasicbeacons_gametest]
+            gameDirectory = layout.buildDirectory.dir('run/gameTestServer')
+            programArgument('--report')
+            programArgument(layout.buildDirectory.file('test-results/gameTestServer/TEST-gametest.xml').get().asFile.absolutePath)
+            disableIdeRun()
+        }
+    }
+}
+
+tasks.named('runGameTestServer') {
+    // The vanilla test reporter doesn't create the report's directory itself.
+    doFirst { layout.buildDirectory.dir('test-results/gameTestServer').get().asFile.mkdirs() }
+}
+
+tasks.named('check') {
+    dependsOn('runGameTestServer')
+}
+
 // Implement mcgradleconventions loader attribute
 def loaderAttribute = Attribute.of('io.github.mcgradleconventions.loader', String)
 ['apiElements', 'runtimeElements', 'sourcesElements', 'javadocElements'].each { variant ->

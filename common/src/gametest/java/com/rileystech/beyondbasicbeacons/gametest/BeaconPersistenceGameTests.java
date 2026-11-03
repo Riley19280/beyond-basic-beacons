@@ -2,7 +2,6 @@ package com.rileystech.beyondbasicbeacons.gametest;
 
 import com.rileystech.beyondbasicbeacons.access.NeighboringBeaconAccess;
 import com.rileystech.beyondbasicbeacons.beacon.BeaconEffectEntry;
-import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -48,7 +47,7 @@ public class BeaconPersistenceGameTests {
         helper.assertValueEqual(loaded.bbb_getNeighboringBeacons(), 2, "neighboring beacons");
     }
 
-    @GameTest
+    @BeaconGameTest
     public void freshBeaconHasDefaults(GameTestHelper helper) {
         NeighboringBeaconAccess beacon = placeBeacon(helper, BEACON);
         helper.assertTrue(beacon.bbb_getEffects().isEmpty(), "no effects by default");
@@ -58,7 +57,7 @@ public class BeaconPersistenceGameTests {
         helper.succeed();
     }
 
-    @GameTest
+    @BeaconGameTest
     public void dataSurvivesSaveAndLoad(GameTestHelper helper) {
         NeighboringBeaconAccess beacon = configuredBeacon(helper);
         CompoundTag saved = ((BlockEntity) beacon).saveWithFullMetadata(helper.getLevel().registryAccess());
@@ -66,7 +65,7 @@ public class BeaconPersistenceGameTests {
         helper.succeed();
     }
 
-    @GameTest
+    @BeaconGameTest
     public void dataIsSentToClients(GameTestHelper helper) {
         NeighboringBeaconAccess beacon = configuredBeacon(helper);
         CompoundTag update = ((BlockEntity) beacon).getUpdateTag(helper.getLevel().registryAccess());
@@ -78,7 +77,7 @@ public class BeaconPersistenceGameTests {
         helper.succeed();
     }
 
-    @GameTest
+    @BeaconGameTest
     public void legacyBeaconWithoutModDataLoadsWithDefaults(GameTestHelper helper) {
         placeBeacon(helper, BEACON);
         BlockEntity blockEntity = helper.getBlockEntity(BEACON, BeaconBlockEntity.class);

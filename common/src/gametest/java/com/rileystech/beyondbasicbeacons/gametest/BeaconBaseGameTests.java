@@ -1,7 +1,6 @@
 package com.rileystech.beyondbasicbeacons.gametest;
 
 import com.rileystech.beyondbasicbeacons.access.NeighboringBeaconAccess;
-import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.level.block.Blocks;
@@ -26,14 +25,14 @@ public class BeaconBaseGameTests {
         helper.assertValueEqual(beacon.bbb_getNeighboringBeacons(), expectedNeighbors, "neighboring beacons");
     }
 
-    @GameTest
+    @BeaconGameTest
     public void noBaseGivesNothing(GameTestHelper helper) {
         NeighboringBeaconAccess beacon = placeBeacon(helper, LOW_BEACON);
         assertBase(helper, beacon, updateBase(helper, LOW_BEACON), 0, 0, 0);
         helper.succeed();
     }
 
-    @GameTest
+    @BeaconGameTest
     public void singleIronLayer(GameTestHelper helper) {
         fillLayer(helper, TALL_BEACON, 1, Blocks.IRON_BLOCK);
         NeighboringBeaconAccess beacon = placeBeacon(helper, TALL_BEACON);
@@ -41,7 +40,7 @@ public class BeaconBaseGameTests {
         helper.succeed();
     }
 
-    @GameTest
+    @BeaconGameTest
     public void mixedLayersSumTheirBlockPoints(GameTestHelper helper) {
         fillLayer(helper, TALL_BEACON, 1, Blocks.GOLD_BLOCK);    // 9 * 2
         fillLayer(helper, TALL_BEACON, 2, Blocks.DIAMOND_BLOCK); // 25 * 3
@@ -50,7 +49,7 @@ public class BeaconBaseGameTests {
         helper.succeed();
     }
 
-    @GameTest
+    @BeaconGameTest
     public void netheriteIsWorthTen(GameTestHelper helper) {
         fillLayer(helper, LOW_BEACON, 1, Blocks.NETHERITE_BLOCK);
         NeighboringBeaconAccess beacon = placeBeacon(helper, LOW_BEACON);
@@ -58,7 +57,7 @@ public class BeaconBaseGameTests {
         helper.succeed();
     }
 
-    @GameTest
+    @BeaconGameTest
     public void nonBaseBlockBreaksTheLayer(GameTestHelper helper) {
         fillLayer(helper, LOW_BEACON, 1, Blocks.IRON_BLOCK);
         helper.setBlock(LOW_BEACON.offset(0, -1, 0), Blocks.STONE);
@@ -67,7 +66,7 @@ public class BeaconBaseGameTests {
         helper.succeed();
     }
 
-    @GameTest
+    @BeaconGameTest
     public void maxBeaconSizeCapsLevelsAndPoints(GameTestHelper helper) {
         fillLayer(helper, TALL_BEACON, 1, Blocks.IRON_BLOCK);
         fillLayer(helper, TALL_BEACON, 2, Blocks.IRON_BLOCK);
@@ -79,7 +78,7 @@ public class BeaconBaseGameTests {
 
     // Only complete layers should provide power - a layer with a missing block isn't part of the
     // pyramid (it doesn't count as a level), so its blocks shouldn't count either.
-    @GameTest
+    @BeaconGameTest
     public void incompleteLayerGivesNoPoints(GameTestHelper helper) {
         fillLayer(helper, TALL_BEACON, 1, Blocks.IRON_BLOCK);
         fillLayer(helper, TALL_BEACON, 2, Blocks.IRON_BLOCK);
@@ -90,7 +89,7 @@ public class BeaconBaseGameTests {
         helper.succeed();
     }
 
-    @GameTest
+    @BeaconGameTest
     public void oneNeighborHalvesPoints(GameTestHelper helper) {
         fillLayer(helper, LOW_BEACON, 1, Blocks.GOLD_BLOCK); // 18
         NeighboringBeaconAccess beacon = placeBeacon(helper, LOW_BEACON);
@@ -99,7 +98,7 @@ public class BeaconBaseGameTests {
         helper.succeed();
     }
 
-    @GameTest
+    @BeaconGameTest
     public void twoNeighborsSplitPointsThreeWays(GameTestHelper helper) {
         fillLayer(helper, LOW_BEACON, 1, Blocks.GOLD_BLOCK); // 18
         NeighboringBeaconAccess beacon = placeBeacon(helper, LOW_BEACON);
@@ -109,7 +108,7 @@ public class BeaconBaseGameTests {
         helper.succeed();
     }
 
-    @GameTest
+    @BeaconGameTest
     public void splitPointsRoundDown(GameTestHelper helper) {
         fillLayer(helper, LOW_BEACON, 1, Blocks.IRON_BLOCK); // 9
         NeighboringBeaconAccess beacon = placeBeacon(helper, LOW_BEACON);
@@ -118,7 +117,7 @@ public class BeaconBaseGameTests {
         helper.succeed();
     }
 
-    @GameTest
+    @BeaconGameTest
     public void beaconsOutsideCheckRangeAreNotNeighbors(GameTestHelper helper) {
         fillLayer(helper, LOW_BEACON, 1, Blocks.GOLD_BLOCK); // 18
         NeighboringBeaconAccess beacon = placeBeacon(helper, LOW_BEACON);
@@ -128,7 +127,7 @@ public class BeaconBaseGameTests {
         helper.succeed();
     }
 
-    @GameTest
+    @BeaconGameTest
     public void neighborOneBlockHigherCounts(GameTestHelper helper) {
         fillLayer(helper, LOW_BEACON, 1, Blocks.GOLD_BLOCK); // 18
         NeighboringBeaconAccess beacon = placeBeacon(helper, LOW_BEACON);
@@ -137,7 +136,7 @@ public class BeaconBaseGameTests {
         helper.succeed();
     }
 
-    @GameTest
+    @BeaconGameTest
     public void removingNeighborRestoresPoints(GameTestHelper helper) {
         fillLayer(helper, LOW_BEACON, 1, Blocks.GOLD_BLOCK); // 18
         NeighboringBeaconAccess beacon = placeBeacon(helper, LOW_BEACON);

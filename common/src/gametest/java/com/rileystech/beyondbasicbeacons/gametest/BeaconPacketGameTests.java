@@ -3,7 +3,6 @@ package com.rileystech.beyondbasicbeacons.gametest;
 import com.rileystech.beyondbasicbeacons.access.NeighboringBeaconAccess;
 import com.rileystech.beyondbasicbeacons.beacon.BeaconEffectEntry;
 import com.rileystech.beyondbasicbeacons.packet.BeaconPacket;
-import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.phys.Vec3;
@@ -66,79 +65,79 @@ public class BeaconPacketGameTests {
         helper.succeed();
     }
 
-    @GameTest
+    @BeaconGameTest
     public void validPacketIsSaved(GameTestHelper helper) {
         accepts(helper, List.of(speed(1), new BeaconEffectEntry("minecraft:strength", 0)), 4, true); // 36+16+25 = 77
     }
 
-    @GameTest
+    @BeaconGameTest
     public void clearingAllEffectsIsAllowed(GameTestHelper helper) {
         accepts(helper, List.of(), 64, false);
     }
 
-    @GameTest
+    @BeaconGameTest
     public void rangeBelowMinimumIsRejected(GameTestHelper helper) {
         rejects(helper, List.of(speed(0)), 0, false);
     }
 
-    @GameTest
+    @BeaconGameTest
     public void rangeAboveMaximumIsRejected(GameTestHelper helper) {
         rejects(helper, List.of(), 65, false);
     }
 
-    @GameTest
+    @BeaconGameTest
     public void amplifierAboveMaximumIsRejected(GameTestHelper helper) {
         rejects(helper, List.of(speed(4)), 1, false);
     }
 
-    @GameTest
+    @BeaconGameTest
     public void negativeAmplifierIsRejected(GameTestHelper helper) {
         rejects(helper, List.of(speed(-1)), 1, false);
     }
 
-    @GameTest
+    @BeaconGameTest
     public void tooManyEffectsIsRejected(GameTestHelper helper) {
         rejects(helper, Collections.nCopies(5, speed(0)), 1, false); // 5 * 4 = 20 points, affordable
     }
 
-    @GameTest
+    @BeaconGameTest
     public void maxEffectCountIsAccepted(GameTestHelper helper) {
         accepts(helper, Collections.nCopies(4, speed(0)), 1, false);
     }
 
-    @GameTest
+    @BeaconGameTest
     public void blacklistedEffectIsRejected(GameTestHelper helper) {
         rejects(helper, List.of(new BeaconEffectEntry("minecraft:wither", 0)), 1, false);
     }
 
-    @GameTest
+    @BeaconGameTest
     public void unknownEffectIsRejected(GameTestHelper helper) {
         rejects(helper, List.of(new BeaconEffectEntry("minecraft:not_a_real_effect", 0)), 1, false);
     }
 
-    @GameTest
+    @BeaconGameTest
     public void exactlyAffordableIsAccepted(GameTestHelper helper) {
         accepts(helper, List.of(speed(0)), 25, false); // 4 * 25 = 100
     }
 
-    @GameTest
+    @BeaconGameTest
     public void overBudgetIsRejected(GameTestHelper helper) {
         rejects(helper, List.of(speed(0)), 26, false); // 4 * 26 = 104
     }
 
-    @GameTest
+    @BeaconGameTest
     public void hidingParticlesCountsTowardsBudget(GameTestHelper helper) {
         rejects(helper, List.of(speed(0)), 19, true); // 4 * 19 + 25 = 101
     }
 
-    @GameTest
+    @BeaconGameTest
     public void effectCostMultiplierCountsTowardsBudget(GameTestHelper helper) {
         rejects(helper, List.of(new BeaconEffectEntry("minecraft:jump_boost", 0)), 13, false); // 4 * 13 * 2.0 = 104
     }
 
     // Available power is currently baseBlockPoints + neighboringBeacons (marked as a placeholder in
     // BeaconScreen) - this pins the server to the same formula the client's Save button uses.
-    @GameTest
+    @BeaconGameTest
     public void neighborCountAddsToAvailablePower(GameTestHelper helper) {
         NeighboringBeaconAccess beacon = beacon(helper);
         beacon.bbb_setNeighboringBeacons(4);
@@ -147,7 +146,7 @@ public class BeaconPacketGameTests {
         helper.succeed();
     }
 
-    @GameTest
+    @BeaconGameTest
     public void ignoredWithoutBeaconMenuOpen(GameTestHelper helper) {
         NeighboringBeaconAccess beacon = beacon(helper);
         withPlayerAt(helper, Vec3.atCenterOf(BEACON).add(1, 0, 0), player ->

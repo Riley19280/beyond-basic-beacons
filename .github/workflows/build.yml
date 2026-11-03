@@ -31,8 +31,8 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
 
-      # `build` runs the unit tests in :common, the Fabric GameTests (a headless test server, via
-      # `check` -> `runGameTest`), and compiles/packages the Fabric and NeoForge jars.
+      # `build` runs the unit tests in :common, the shared GameTests on a headless Fabric server
+      # (`runGameTest`) and a headless NeoForge server (`runGameTestServer`), and packages both jars.
       - name: Build and test
         run: ./gradlew build --stacktrace
 
@@ -45,6 +45,7 @@ jobs:
             **/build/reports/tests/
             **/build/test-results/
             fabric/build/run/gameTest/logs/
+            neoforge/build/run/gameTestServer/logs/
           retention-days: 7
 
       - name: Upload mod jars

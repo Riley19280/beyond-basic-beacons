@@ -2,7 +2,6 @@ package com.rileystech.beyondbasicbeacons.gametest;
 
 import com.rileystech.beyondbasicbeacons.access.NeighboringBeaconAccess;
 import com.rileystech.beyondbasicbeacons.beacon.BeaconEffectEntry;
-import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -31,7 +30,7 @@ public class BeaconEffectsGameTests {
         return beacon;
     }
 
-    @GameTest
+    @BeaconGameTest
     public void appliesEveryConfiguredEffect(GameTestHelper helper) {
         beaconWith(helper, 3, false,
                 new BeaconEffectEntry("minecraft:speed", 1),
@@ -53,7 +52,7 @@ public class BeaconEffectsGameTests {
         helper.succeed();
     }
 
-    @GameTest
+    @BeaconGameTest
     public void hideParticlesHidesEffectParticles(GameTestHelper helper) {
         beaconWith(helper, 3, true, new BeaconEffectEntry("minecraft:speed", 0));
         withPlayerAt(helper, NEAR, player -> {
@@ -65,7 +64,7 @@ public class BeaconEffectsGameTests {
         helper.succeed();
     }
 
-    @GameTest
+    @BeaconGameTest
     public void playersOutsideRangeGetNothing(GameTestHelper helper) {
         beaconWith(helper, 2, false, new BeaconEffectEntry("minecraft:speed", 0));
         // Range 2 around a 1-block beacon covers 2 blocks either side; 6 blocks away is well out.
@@ -78,7 +77,7 @@ public class BeaconEffectsGameTests {
         helper.succeed();
     }
 
-    @GameTest
+    @BeaconGameTest
     public void rangeExtendsUpwards(GameTestHelper helper) {
         beaconWith(helper, 2, false, new BeaconEffectEntry("minecraft:speed", 0));
         withPlayerAt(helper, Vec3.atBottomCenterOf(BEACON).add(0, 40, 0), player -> {
@@ -88,7 +87,7 @@ public class BeaconEffectsGameTests {
         helper.succeed();
     }
 
-    @GameTest
+    @BeaconGameTest
     public void blacklistedEffectIsNotApplied(GameTestHelper helper) {
         beaconWith(helper, 3, false,
                 new BeaconEffectEntry("minecraft:wither", 0),
@@ -101,7 +100,7 @@ public class BeaconEffectsGameTests {
         helper.succeed();
     }
 
-    @GameTest
+    @BeaconGameTest
     public void unknownEffectIsSkipped(GameTestHelper helper) {
         beaconWith(helper, 3, false,
                 new BeaconEffectEntry("minecraft:not_a_real_effect", 0),
@@ -113,7 +112,7 @@ public class BeaconEffectsGameTests {
         helper.succeed();
     }
 
-    @GameTest
+    @BeaconGameTest
     public void beaconWithNoEffectsDoesNothing(GameTestHelper helper) {
         beaconWith(helper, 3, false);
         withPlayerAt(helper, NEAR, player -> {

@@ -1,0 +1,19 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
+license = "GPLv3"
+
+[[mods]]
+modId = "beyondbasicbeacons_gametest"
+version = "1.0.0"
+displayName = "Beyond Basic Beacons GameTests"
+description = '''Test-only mod: registers the shared GameTests (common/src/gametest) on NeoForge. Never shipped.'''
+
+[[mixins]]
+config = "beyondbasicbeacons_gametest.mixins.json"
+
+[[dependencies.beyondbasicbeacons_gametest]]
+modId = "beyondbasicbeacons"
+type = "required"
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "BOTH"
