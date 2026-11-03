@@ -9,6 +9,7 @@ import net.minecraft.gametest.framework.TestData;
 import net.minecraft.gametest.framework.TestEnvironmentDefinition;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Rotation;
 
 import java.lang.reflect.InvocationTargetException;
@@ -37,7 +38,7 @@ public final class BeaconGameTests {
     public record Test(Identifier id, int maxTicks, Consumer<GameTestHelper> function) {
         public GameTestInstance instance(Holder<TestEnvironmentDefinition<?>> environment) {
             TestData<Holder<TestEnvironmentDefinition<?>>> data = new TestData<>(
-                    environment, EMPTY_STRUCTURE, this.maxTicks, 0, true, Rotation.NONE,
+                    environment, Level.OVERWORLD, EMPTY_STRUCTURE, this.maxTicks, 0, true, Rotation.NONE,
                     false, 1, 1, false, 1);
             return new FunctionGameTestInstance(ResourceKey.create(Registries.TEST_FUNCTION, this.id), data);
         }

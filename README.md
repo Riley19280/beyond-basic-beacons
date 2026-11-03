@@ -2,7 +2,7 @@
 
 Vanilla beacons are fairly limited. **Beyond Basic Beacons** expands the system by letting you configure multiple effects, adjust their range, and customize each beacon individually.
 
-Built for Minecraft `1.26.2`, available for **Fabric**.
+Built for Minecraft `26.3`, available for **Fabric**.
 
 ## Features
 
